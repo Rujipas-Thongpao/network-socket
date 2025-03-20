@@ -1,0 +1,26 @@
+{
+  "name": "network-socket",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/app.js",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "node dist/app.js",
+    "dev": "nodemon src/app.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^9.1.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
+  }
+}
