@@ -8,7 +8,53 @@ datasource db {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  name String  @unique 
-  password String?
+  id               Int           @id @default(autoincrement())
+  name             String        @unique
+  password         String?
+  sentMessages     Message[]     @relation("SentMessages")
+  receivedMessages Message[]     @relation("ReceivedMessages")
+  rooms            UserRoom[]
+  createdRooms     Room[]        @relation("RoomCreator")
+  RoomMessage      RoomMessage[]
+}
+
+model Room {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  creator     User          @relation("RoomCreator", fields: [creatorId], references: [id])
+  creatorId   Int
+  members     UserRoom[]
+  messages    RoomMessage[]
+  createdAt   DateTime      @default(now())
+}
+
+model UserRoom {
+  user     User     @relation(fields: [userId], references: [id])
+  userId   Int
+  room     Room     @relation(fields: [roomId], references: [id])
+  roomId   Int
+  joinedAt DateTime @default(now())
+
+  @@id([userId, roomId])
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  from      User     @relation("SentMessages", fields: [fromId], references: [id])
+  to        User     @relation("ReceivedMessages", fields: [toId], references: [id])
+  fromId    Int
+  toId      Int
+  createdAt DateTime @default(now())
+}
+
+model RoomMessage {
+  id        Int      @id @default(autoincrement())
+  content   String
+  room      Room     @relation(fields: [roomId], references: [id])
+  roomId    Int
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  Int
+  createdAt DateTime @default(now())
 }
