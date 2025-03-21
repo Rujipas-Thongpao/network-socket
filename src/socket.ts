@@ -30,7 +30,6 @@ export const io = async (server: http.Server) => {
 	});
 
 	io.use(async (socket: Socket, next) => {
-
 		const { username, password } = socket.handshake.auth;
 		if (!username || !password) {
 			return next(new Error("invalid username"));
@@ -75,11 +74,11 @@ export const io = async (server: http.Server) => {
 
 		// log all user
 		const users = [];
-		for (let [id, socket] of io.of("/").sockets) {
+		for (let [id, s] of io.of("/").sockets) {
 			users.push({
 				socketId: id,
-				userId: socket.userId,
-				username: socket.username,
+				userId: s.userId,
+				username: s.username,
 			});
 		}
 		console.log(users);
@@ -89,14 +88,15 @@ export const io = async (server: http.Server) => {
 			username: socket.username,
 		});
 
+		// join it own rooms.
+		socket.join(socket.userId);
+
 		//	socket.emit("session", { // emit to just that client
 		//		sessionID: socket.sessionID,
 		//		userID: socket.userID,
 		//	});
 		//
 
-		// join it own rooms.
-		socket.join(socket.userId);
 
 		//	//socket.on("join room", (roomId) => {
 		//	//	socket.join(roomId);
@@ -116,20 +116,30 @@ export const io = async (server: http.Server) => {
 		//	//	})
 		//	//})
 		//	//
-		//	//socket.on("private message", ({ content, to }) => {
-		//	//	socket.to(to).to(socket.userID).emit("private message", {
-		//	//		content,
-		//	//		from: socket.userID,
-		//	//		to
-		//	//	});
-		//	//});
+
+		socket.on("private message", ({ content, to }) => {
+			socket.to(to).emit("private message", {
+				content,
+				from: socket.userId,
+				to
+			});
+		});
 		//
 		socket.on("disconnect", async () => {
-			//const matchingSockets = await io.in(socket.userID).allSockets();
-			//const isDisconnected = matchingSockets.size === 0;
-			//if (isDisconnected) {
-			//
-			//}
+			const users = [];
+			for (let [id, s] of io.of("/").sockets) {
+				if (id == socket.id) continue;
+				users.push({
+					socketId: id,
+					userId: s.userId,
+					username: s.username,
+				});
+			}
+			socket.emit("users", users); // emit to just that client
+			socket.broadcast.emit("user disconnected", { // boardcast except this socket
+				userID: socket.id,
+				username: socket.username,
+			});
 		});
 	})
 }
