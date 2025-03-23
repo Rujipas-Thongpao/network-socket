@@ -39,10 +39,15 @@ export const io = async (server: http.Server) => {
 	});
 
 	io.use(async (socket: Socket, next) => {
-		const { username, password } = socket.handshake.auth;
-		if (!username || !password) {
-			return next(new Error("invalid username"));
-		}
+
+
+		const username = socket.handshake.headers.username as string;
+		const password = socket.handshake.headers.password as string;
+
+        if (!username || !password) {
+            return next(new Error('Authentication error: No token provided'));
+        }
+
 
 		// find if username password
 		const user = await prisma.user.findFirst({
@@ -74,8 +79,6 @@ export const io = async (server: http.Server) => {
 	});
 
 	io.on('connection', (socket: Socket) => {
-
-		// log all user
 		const users = [];
 		for (let [id, s] of io.of("/").sockets) {
 			users.push({
@@ -84,11 +87,11 @@ export const io = async (server: http.Server) => {
 				username: s.username,
 			});
 		}
-		// console.log(users);
+		console.log(users);
 
 		// emit all user
 		// io.emit("new user connected", users);
-		socket.emit("users", users); // emit to just that client
+		io.emit("users", users); // emit to just that client
 		socket.broadcast.emit("user connected", { // boardcast except this socket
 			userID: socket.userId,
 			username: socket.username,
@@ -97,8 +100,21 @@ export const io = async (server: http.Server) => {
 
 
 		// private room (DM)
-		socket.on("join private room", async ({ otherId }) => {
-			const roomName = [socket.userId, otherId].sort().join('-');
+		socket.on("join private room", async (mes) => {
+			const { otherName } = JSON.parse(mes);
+
+			// find other
+			const other = await prisma.user.findFirst({
+				where :{
+					name : otherName	
+				}
+			})
+
+			if(!other){
+				return;
+			}
+
+			const roomName = [socket.userId, other.id].sort().join('-');
 
 			let privateRoom = await prisma.room.findFirst({
 				where: {
@@ -118,8 +134,21 @@ export const io = async (server: http.Server) => {
 			socket.join(privateRoom.id.toString());
 		})
 
-		socket.on("private message", async ({ content, otherId }) => {
-			const roomName = [socket.userId, otherId].sort().join('-');
+		socket.on("private message", async (mes) => {
+			const { content, otherName } = JSON.parse(mes);
+
+			// find other
+			const other = await prisma.user.findFirst({
+				where :{
+					name : otherName	
+				}
+			})
+
+			if(!other){
+				return;
+			}
+
+			const roomName = [socket.userId, other.id].sort().join('-');
 
 			const room = await prisma.room.findFirst({
 				where: {
@@ -147,7 +176,8 @@ export const io = async (server: http.Server) => {
 		});
 
 		// public room
-		socket.on("join public room", async (roomName) => {
+		socket.on("join public room", async (mes) => {
+			const {roomName}= JSON.parse(mes);
 
 			// create room dynamically
 			let publicRoom = await prisma.room.findFirst({
@@ -168,7 +198,8 @@ export const io = async (server: http.Server) => {
 			socket.join(publicRoom.id.toString());
 		})
 
-		socket.on("public message", async ({ content, roomName }) => {
+		socket.on("public message", async (mes) => {
+			const { content, roomName} = JSON.parse(mes);
 
 			const room = await prisma.room.findFirst({
 				where: {
@@ -199,7 +230,12 @@ export const io = async (server: http.Server) => {
 		socket.join(globalRoom.id.toString());
 
 		// Global
-		socket.on("global message", async ({ content }) => {
+		socket.on("global message", async (mes) => {
+			const {content} = JSON.parse(mes);
+
+			console.log("message from global");
+			console.log(content);
+
 			const message = await prisma.message.create({
 				data: {
 					content: content,
