@@ -84,17 +84,17 @@ export const io = async (server: http.Server) => {
 				username: s.username,
 			});
 		}
-		console.log(users);
+		// console.log(users);
 
 		// emit all user
-		io.emit("new user connected", users);
-		// socket.emit("users", users); // emit to just that client
-		// socket.broadcast.emit("user connected", { // boardcast except this socket
-		// 	userID: socket.userId,
-		// 	username: socket.username,
-		// });
+		// io.emit("new user connected", users);
+		socket.emit("users", users); // emit to just that client
+		socket.broadcast.emit("user connected", { // boardcast except this socket
+			userID: socket.userId,
+			username: socket.username,
+		});
 
-		socket.join(globalRoom.id.toString());
+
 
 		// private room (DM)
 		socket.on("join private room", async ({ otherId }) => {
@@ -149,8 +149,6 @@ export const io = async (server: http.Server) => {
 		// public room
 		socket.on("join public room", async (roomName) => {
 
-			// TODO : validate roomName first
-
 			// create room dynamically
 			let publicRoom = await prisma.room.findFirst({
 				where: {
@@ -196,6 +194,9 @@ export const io = async (server: http.Server) => {
 				from: socket.userId
 			})
 		})
+
+		// join global room 
+		socket.join(globalRoom.id.toString());
 
 		// Global
 		socket.on("global message", async ({ content }) => {
