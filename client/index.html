@@ -3,277 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socket.IO Chat App</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <title>Chat App</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .hidden {
-            display: none;
-        }
-        #login-form {
-            margin-bottom: 20px;
-        }
-        #users-list {
-            width: 200px;
-            float: left;
-            border-right: 1px solid #ccc;
-            padding-right: 20px;
-            height: 400px;
-            overflow-y: auto;
-        }
-        #chat-container {
-            margin-left: 220px;
-            height: 400px;
-        }
-        #messages {
-            height: 350px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: auto;
-            margin-bottom: 10px;
-        }
-        .user-item {
-            padding: 5px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .user-item:hover {
-            background-color: #f0f0f0;
-        }
-        .user-item.selected {
-            background-color: #e0e0e0;
-            font-weight: bold;
-        }
-        .message {
-            margin-bottom: 10px;
-            padding: 5px;
-        }
-        .message.sent {
-            text-align: right;
-            color: blue;
-        }
-        .message.received {
-            text-align: left;
-            color: green;
-        }
-        .message-input {
-            width: 80%;
-            padding: 5px;
-        }
-        .send-button {
-            padding: 5px 10px;
-        }
+        body { font-family: Arial, sans-serif; }
+        #chat { border: 1px solid #ccc; padding: 10px; width: 300px; height: 400px; overflow-y: auto; display: none; }
+        #users { margin-bottom: 10px; }
+        input { width: 80%; }
+        button { width: 18%; }
+        #login-form { margin-bottom: 20px; }
     </style>
-</head>
-<body>
-    <h1>Socket.IO Chat App</h1>
-    
-    <div id="login-form">
-        <h2>Login</h2>
-        <div>
-            <label for="username">Username:</label>
-            <input type="text" id="username" placeholder="Enter username">
-        </div>
-        <div>
-            <label for="password">Password:</label>
-            <input type="password" id="password" placeholder="Enter password">
-        </div>
-        <button id="login-button">Login/Register</button>
-    </div>
-    
-    <div id="chat-ui" class="hidden">
-        <h2>Chat</h2>
-        <div id="users-list">
-            <h3>Online Users</h3>
-            <div id="users-container"></div>
-        </div>
-        
-        <div id="chat-container">
-            <div id="messages"></div>
-            <div id="message-input-container">
-                <input type="text" id="message-input" class="message-input" placeholder="Type a message...">
-                <button id="send-button" class="send-button">Send</button>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginForm = document.getElementById('login-form');
-            const chatUI = document.getElementById('chat-ui');
-            const usersContainer = document.getElementById('users-container');
-            const messagesContainer = document.getElementById('messages');
-            const messageInput = document.getElementById('message-input');
-            const sendButton = document.getElementById('send-button');
-            const loginButton = document.getElementById('login-button');
-            
+    <script defer src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script defer>
+        document.addEventListener("DOMContentLoaded", () => {
+            const loginForm = document.getElementById("login-form");
+            const usernameInput = document.getElementById("username");
+            const passwordInput = document.getElementById("password");
+            const chatSection = document.getElementById("chat-section");
+            const usersList = document.getElementById("users");
+            const chatBox = document.getElementById("chat");
+            const messageInput = document.getElementById("message");
+            const sendButton = document.getElementById("send");
             let socket;
-            let selectedUser = null;
-            let currentUserId = null;
-            let messageHistory = {};
-            
-            loginButton.addEventListener('click', () => {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
+
+            loginForm.addEventListener("submit", (event) => {
+                event.preventDefault();
+                const username = usernameInput.value;
+                const password = passwordInput.value;
                 
-                if (!username || !password) {
-                    alert('Username and password are required!');
-                    return;
-                }
-                
-                // Connect to socket.io server with auth
-                socket = io('http://localhost:3000', {
-                    auth: {
-                        username,
-                        password
-                    }
+                socket = io("http://localhost:5000", {
+                    auth: { username, password },
+                });
+
+                socket.on("connect", () => {
+                    loginForm.style.display = "none";
+                    chatSection.style.display = "block";
+                });
+
+                socket.on("users", (users) => {
+                    usersList.innerHTML = "Online Users: " + users.map(user => user.username).join(", ");
                 });
                 
-                // Handle connection errors
-                socket.on('connect_error', (err) => {
-                    alert('Connection error: ' + err.message);
+                socket.on("user connected", (user) => {
+                    usersList.innerHTML += `, ${user.username}`;
                 });
-                
-                // Handle successful connection
-                socket.on('connect', () => {
-                    console.log('Connected to server!');
-                    loginForm.classList.add('hidden');
-                    chatUI.classList.remove('hidden');
+
+                socket.on("user disconnected", (user) => {
+                    usersList.innerHTML = usersList.innerHTML.replace(`, ${user.username}`, "");
                 });
-                
-                // Receive users list
-                socket.on('users', (users) => {
-                    currentUserId = socket.id;
-                    usersContainer.innerHTML = '';
-                    
-                    users.forEach(user => {
-                        const userItem = document.createElement('div');
-                        userItem.classList.add('user-item');
-                        userItem.dataset.userId = user.userId;
-                        userItem.textContent = user.username;
-                        
-                        userItem.addEventListener('click', () => {
-                            document.querySelectorAll('.user-item.selected').forEach(el => {
-                                el.classList.remove('selected');
-                            });
-                            userItem.classList.add('selected');
-                            selectedUser = user.userId;
-                            
-                            // Display message history
-                            displayMessages(selectedUser);
-                        });
-                        
-                        usersContainer.appendChild(userItem);
-                    });
+
+                socket.on("global message", (msg) => {
+                    chatBox.innerHTML += `<div><strong>${msg.from}:</strong> ${msg.content}</div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
                 });
-                
-                // Handle user connected
-                socket.on('user connected', (user) => {
-                    const userItem = document.createElement('div');
-                    userItem.classList.add('user-item');
-                    userItem.dataset.userId = user.userID;
-                    userItem.textContent = user.username;
-                    
-                    userItem.addEventListener('click', () => {
-                        document.querySelectorAll('.user-item.selected').forEach(el => {
-                            el.classList.remove('selected');
-                        });
-                        userItem.classList.add('selected');
-                        selectedUser = user.userID;
-                        
-                        // Display message history
-                        displayMessages(selectedUser);
-                    });
-                    
-                    usersContainer.appendChild(userItem);
+
+                sendButton.addEventListener("click", () => {
+                    const message = messageInput.value;
+                    socket.emit("global message", { content: message });
+                    messageInput.value = "";
                 });
-                
-                // Handle user disconnected
-                socket.on('user disconnected', (user) => {
-                    const userElement = document.querySelector(`.user-item[data-user-id="${user.userID}"]`);
-                    if (userElement) {
-                        userElement.remove();
-                    }
-                });
-                
-                // Handle private messages
-                socket.on('private message', ({ content, from, to }) => {
-                    if (!messageHistory[from]) {
-                        messageHistory[from] = [];
-                    }
-                    
-                    messageHistory[from].push({
-                        content,
-                        from,
-                        to,
-                        type: 'received'
-                    });
-                    
-                    if (selectedUser === from) {
-                        displayMessages(selectedUser);
-                    }
-                });
-                
-                // Send message
-                sendButton.addEventListener('click', sendMessage);
-                messageInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        sendMessage();
-                    }
-                });
-                
-                function sendMessage() {
-                    if (!selectedUser) {
-                        alert('Please select a user to chat with!');
-                        return;
-                    }
-                    
-                    const content = messageInput.value.trim();
-                    if (!content) return;
-                    
-                    socket.emit('private message', {
-                        content,
-                        to: selectedUser
-                    });
-                    
-                    if (!messageHistory[selectedUser]) {
-                        messageHistory[selectedUser] = [];
-                    }
-                    
-                    messageHistory[selectedUser].push({
-                        content,
-                        from: currentUserId,
-                        to: selectedUser,
-                        type: 'sent'
-                    });
-                    
-                    messageInput.value = '';
-                    
-                    displayMessages(selectedUser);
-                }
-                
-                function displayMessages(userId) {
-                    messagesContainer.innerHTML = '';
-                    
-                    if (!messageHistory[userId]) return;
-                    
-                    messageHistory[userId].forEach(msg => {
-                        const messageElement = document.createElement('div');
-                        messageElement.classList.add('message', msg.type);
-                        messageElement.textContent = msg.content;
-                        messagesContainer.appendChild(messageElement);
-                    });
-                    
-                    // Scroll to bottom
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
             });
         });
     </script>
+</head>
+<body>
+    <h1>Chat App</h1>
+    <form id="login-form">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Login/Register</button>
+    </form>
+    
+    <div id="chat-section" style="display: none;">
+        <div id="users">Online Users: </div>
+        <div id="chat"></div>
+        <input type="text" id="message" placeholder="Type a message">
+        <button id="send">Send</button>
+    </div>
 </body>
 </html>

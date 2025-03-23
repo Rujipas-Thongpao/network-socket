@@ -11,21 +11,16 @@ model User {
   id               Int           @id @default(autoincrement())
   name             String        @unique
   password         String?
-  sentMessages     Message[]     @relation("SentMessages")
-  receivedMessages Message[]     @relation("ReceivedMessages")
   rooms            UserRoom[]
-  createdRooms     Room[]        @relation("RoomCreator")
-  RoomMessage      RoomMessage[]
+  sendMessage      Message[] 
 }
 
 model Room {
   id          Int           @id @default(autoincrement())
-  name        String
-  description String?
-  creator     User          @relation("RoomCreator", fields: [creatorId], references: [id])
-  creatorId   Int
+  name        String        @unique
   members     UserRoom[]
-  messages    RoomMessage[]
+  messages    Message[]
+  type        String        @default("public") // "public" or "private" 
   createdAt   DateTime      @default(now())
 }
 
@@ -39,17 +34,8 @@ model UserRoom {
   @@id([userId, roomId])
 }
 
-model Message {
-  id        Int      @id @default(autoincrement())
-  content   String
-  from      User     @relation("SentMessages", fields: [fromId], references: [id])
-  to        User     @relation("ReceivedMessages", fields: [toId], references: [id])
-  fromId    Int
-  toId      Int
-  createdAt DateTime @default(now())
-}
 
-model RoomMessage {
+model Message {
   id        Int      @id @default(autoincrement())
   content   String
   room      Room     @relation(fields: [roomId], references: [id])
