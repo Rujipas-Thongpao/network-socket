@@ -5,7 +5,7 @@ import * as http from "http";
 import { io } from "./socket";
 
 import { prisma } from './prisma';
-import { chatRouter }  from './Route/chat.route'
+import { chatRouter } from './Route/chat.route'
 
 const app: Express = express();
 const port = process.env.PORT || 3000;

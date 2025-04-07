@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npx tsc",
     "start": "node dist/app.js",
-    "dev": "nodemon src/app.ts",
+    "dev": "nodemon -L src/app.ts",
     "db:deploy": "npx prisma migrate deploy && npx prisma generate"
   },
   "keywords": [],
