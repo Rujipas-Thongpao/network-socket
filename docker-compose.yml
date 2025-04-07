@@ -31,6 +31,9 @@ services:
     depends_on:
       postgres_db:
         condition: service_healthy
+    volumes:
+      - .:/usr/src/app  
+      - /usr/src/app/node_modules 
     env_file:
       - .env.prod
     networks:

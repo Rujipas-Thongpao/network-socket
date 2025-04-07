@@ -4,7 +4,9 @@ WORKDIR /usr/src/app
 
 COPY package.json package-lock.json ./
 
-RUN npm ci
+RUN npm install
+
+RUN npm install -g nodemon
 
 COPY . .
 
