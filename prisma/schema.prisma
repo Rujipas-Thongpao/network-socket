@@ -8,20 +8,21 @@ datasource db {
 }
 
 model User {
-  id               Int           @id @default(autoincrement())
-  name             String        @unique
-  password         String?
-  rooms            UserRoom[]
-  sendMessage      Message[] 
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  password    String?
+  rooms       UserRoom[]
+  sendMessage Message[]
 }
 
 model Room {
-  id          Int           @id @default(autoincrement())
-  name        String        @unique
-  members     UserRoom[]
-  messages    Message[]
-  type        String        @default("public") // "public" or "private" 
-  createdAt   DateTime      @default(now())
+  id        Int        @id @default(autoincrement())
+  hashName  String     @unique
+  name      String
+  members   UserRoom[]
+  messages  Message[]
+  type      String     @default("public") // "public" or "private" 
+  createdAt DateTime   @default(now())
 }
 
 model UserRoom {
@@ -33,7 +34,6 @@ model UserRoom {
 
   @@id([userId, roomId])
 }
-
 
 model Message {
   id        Int      @id @default(autoincrement())

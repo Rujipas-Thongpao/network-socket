@@ -1,10 +1,18 @@
 import { Server, Socket } from "socket.io";
 import { prisma } from './prisma';
 import * as http from "http";
+import crypto, { hash } from 'crypto'
+import { hashRoomName } from './Utils/Utils'
+
+type User = {
+	id: number;
+	name: string;
+}
 
 // Extend the interface
 declare module 'socket.io' {
 	interface Socket {
+		user: User;
 		userId: number;
 		username: string;
 	}
@@ -20,9 +28,11 @@ export const io = async (server: http.Server) => {
 		}
 	})
 
+
 	if (!globalRoom) {
 		globalRoom = await prisma.room.create({
 			data: {
+				hashName: hashRoomName('global room'),
 				name: 'global room',
 				type: 'public'
 			}
@@ -60,6 +70,7 @@ export const io = async (server: http.Server) => {
 			if (user.password === password) {
 				socket.userId = user.id;
 				socket.username = user.name;
+				socket.user = user;
 				return next();
 			}
 			return next(new Error("invalid username"));
@@ -75,6 +86,7 @@ export const io = async (server: http.Server) => {
 
 		socket.userId = createdUser.id;
 		socket.username = createdUser.name;
+		socket.user = createdUser;
 		next();
 	});
 
@@ -83,18 +95,18 @@ export const io = async (server: http.Server) => {
 		for (let [id, s] of io.of("/").sockets) {
 			users.push({
 				socketId: id,
-				userId: s.userId,
-				username: s.username,
+				user: s.user
 			});
 		}
 		console.log(users);
 
-		// emit all user
-		// io.emit("new user connected", users);
-		io.emit("users", users); // emit to just that client
-		socket.broadcast.emit("user connected", { // boardcast except this socket
-			userID: socket.userId,
-			username: socket.username,
+		// Emit to the *newly connected* client ONLY
+		socket.emit("user connected", { users });
+
+		// Notify *others* that someone new joined
+		socket.broadcast.emit("new user joined", {
+			socketId: socket.id,
+			user: socket.data?.user,
 		});
 
 
@@ -125,13 +137,18 @@ export const io = async (server: http.Server) => {
 			if (!privateRoom) {
 				privateRoom = await prisma.room.create({
 					data: {
+						hashName: hashRoomName(roomName),
 						name: roomName,
 						type: "private"
 					}
 				})
 			}
 
-			socket.join(privateRoom.id.toString());
+			socket.join(privateRoom.hashName);
+			console.log(socket.username, ' join private room ', privateRoom.hashName);
+			io.to(privateRoom.hashName).emit("private : user connected", {
+				user: socket.user
+			})
 		})
 
 		socket.on("private message", async (mes) => {
@@ -169,41 +186,55 @@ export const io = async (server: http.Server) => {
 				}
 			})
 
-			io.to(room.id.toString()).emit("private message", {
+			io.to(room.hashName).emit("private message", {
 				content,
-				from: socket.userId,
+				from: socket.user,
+				to: room
 			});
 		});
 
 		// public room
-		socket.on("join public room", async (mes) => {
+		socket.on("create public room", async (mes) => {
 			const { roomName } = JSON.parse(mes);
 
-			// create room dynamically
-			let publicRoom = await prisma.room.findFirst({
-				where: {
+			const publicRoom = await prisma.room.create({
+				data: {
+					hashName: hashRoomName(roomName),
 					name: roomName,
 					type: "public"
 				}
 			})
+			socket.join(publicRoom.hashName);
+		})
+
+		socket.on("join public room", async (mes) => {
+			const { hashRoomName } = JSON.parse(mes);
+
+			// create room dynamically
+			let publicRoom = await prisma.room.findFirst({
+				where: {
+					hashName: hashRoomName,
+					type: "public"
+				}
+			})
+
 			if (!publicRoom) {
-				publicRoom = await prisma.room.create({
-					data: {
-						name: roomName,
-						type: "public"
-					}
-				})
+				return;
 			}
 
-			socket.join(publicRoom.id.toString());
+			socket.join(publicRoom.hashName);
+			console.log(socket.username, ' join public room ', publicRoom.hashName);
+			io.to(publicRoom.hashName).emit("public : user connected", {
+				user: socket.user
+			})
 		})
 
 		socket.on("public message", async (mes) => {
-			const { content, roomName } = JSON.parse(mes);
+			const { content, hashRoomName } = JSON.parse(mes);
 
 			const room = await prisma.room.findFirst({
 				where: {
-					name: roomName,
+					hashName: hashRoomName,
 					type: "public"
 				}
 			})
@@ -220,14 +251,15 @@ export const io = async (server: http.Server) => {
 				}
 			})
 
-			io.to(room.id.toString()).emit("public message", {
+			io.to(room.hashName).emit("public message", {
 				content,
-				from: socket.userId
+				from: socket.user,
+				to: room
 			})
 		})
 
 		// join global room 
-		socket.join(globalRoom.id.toString());
+		socket.join(globalRoom.hashName);
 
 		// Global
 		socket.on("global message", async (mes) => {
@@ -244,9 +276,10 @@ export const io = async (server: http.Server) => {
 				}
 			})
 
-			io.to(globalRoom.id.toString()).emit("global message", {
+			io.to(globalRoom.hashName).emit("global message", {
 				content,
-				from: socket.userId,
+				from: socket.user,
+				to: globalRoom
 			})
 		})
 
@@ -264,6 +297,7 @@ export const io = async (server: http.Server) => {
 			socket.broadcast.emit("user disconnected", { // boardcast except this socket
 				userID: socket.userId,
 				username: socket.username,
+				users: users
 			});
 		});
 	})
