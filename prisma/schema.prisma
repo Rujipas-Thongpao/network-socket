@@ -1,5 +1,15 @@
+enum Theme {
+  DEFAULT
+  DARK
+  LIGHT
+  SPACE
+  NATURE
+  RETRO
+}
+
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -16,13 +26,15 @@ model User {
 }
 
 model Room {
-  id        Int        @id @default(autoincrement())
-  hashName  String     @unique
-  name      String
-  members   UserRoom[]
-  messages  Message[]
-  type      String     @default("public") // "public" or "private" 
-  createdAt DateTime   @default(now())
+  id       Int        @id @default(autoincrement())
+  hashName String     @unique
+  name     String
+  members  UserRoom[]
+  messages Message[]
+  type     String     @default("public") // "public" or "private" 
+  theme    Theme      @default(DEFAULT)
+
+  createdAt DateTime @default(now())
 }
 
 model UserRoom {

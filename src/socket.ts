@@ -205,6 +205,19 @@ export const io = async (server: http.Server) => {
 				}
 			})
 			socket.join(publicRoom.hashName);
+			await prisma.userRoom.upsert({
+				where: {
+					userId_roomId: {
+						userId: socket.user.id,
+						roomId: publicRoom.id
+					}
+				},
+				update: {}, // nothing to update if it exists
+				create: {
+					userId: socket.user.id,
+					roomId: publicRoom.id
+				}
+			});
 		})
 
 		socket.on("join public room", async (mes) => {
@@ -227,6 +240,21 @@ export const io = async (server: http.Server) => {
 			io.to(publicRoom.hashName).emit("public : user connected", {
 				user: socket.user
 			})
+
+			// DB
+			await prisma.userRoom.upsert({
+				where: {
+					userId_roomId: {
+						userId: socket.user.id,
+						roomId: publicRoom.id
+					}
+				},
+				update: {}, // nothing to update if it exists
+				create: {
+					userId: socket.user.id,
+					roomId: publicRoom.id
+				}
+			});
 		})
 
 		socket.on("public message", async (mes) => {
