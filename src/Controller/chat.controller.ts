@@ -67,7 +67,44 @@ export const getRoom: RequestHandler = async (req: Request, res: Response) => {
             data: room
         })
     }
-    catch (error) {
+    catch (error: any) {
+        res.status(500).json({
+            success: false,
+            messag: `internal server error : ${error.message}`
+        })
+    }
+}
 
+
+export const changeRoomTheme: RequestHandler = async (req, res) => {
+    try {
+        const { hashRoomName } = req.params;
+        const { theme } = req.body;
+        const updatedRoom = await prisma.room.update({
+            where: {
+                hashName: hashRoomName
+            },
+            data: {
+                theme: theme
+            }
+        })
+        if (!updatedRoom) {
+            res.status(400).json({
+                success: false,
+                message: "update theme unsuccessfully"
+            })
+        }
+        res.status(200).json({
+            success: false,
+            message: "update theme unsuccessfully",
+            data: updatedRoom
+        })
+
+    }
+    catch (error: any) {
+        res.status(500).json({
+            success: false,
+            messag: `internal server error : ${error.message}`
+        })
     }
 }
