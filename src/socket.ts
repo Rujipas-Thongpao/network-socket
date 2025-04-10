@@ -33,8 +33,11 @@ export const io = async (server: http.Server) => {
 
 	// middleware
 	io.use(async (socket: Socket, next) => {
-		const username = socket.handshake.headers.username as string;
-		const password = socket.handshake.headers.password as string;
+		const username = socket.handshake.auth.username as string;
+		const password = socket.handshake.auth.password as string;
+
+		console.log(`username ${username}`);
+		console.log(`password ${password}`);
 
 		if (!username || !password) {
 			return next(new Error('Authentication error: No token provided'));
