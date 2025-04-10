@@ -48,9 +48,25 @@ export const joinPrivateRoomHandler: SocketEventHandler = async (socket, io, mes
 
     socket.join(privateRoom.hashName);
     console.log(socket.username, ' join private room ', privateRoom.hashName);
+    socket.emit('join room', {
+        room: privateRoom
+    })
     io.to(privateRoom.hashName).emit("private : user connected", {
         user: socket.user
     })
+    await prisma.userRoom.upsert({
+        where: {
+            userId_roomId: {
+                userId: socket.user.id,
+                roomId: privateRoom.id
+            }
+        },
+        update: {}, // nothing to update if it exists
+        create: {
+            userId: socket.user.id,
+            roomId: privateRoom.id
+        }
+    });
 }
 
 export const privateMessageHandler: SocketEventHandler = async (socket, io, mes) => {

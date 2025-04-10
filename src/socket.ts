@@ -6,6 +6,7 @@ import { hashRoomName } from './Utils/Utils'
 import { joinPrivateRoomHandler, privateMessageHandler, privateRoomHandler } from "./controller.socket/privateRoom.controller";
 import { createPublicRoomHandler, joinPublicRoomHandler, publicMessageHandler, publicRoomHandler } from "./controller.socket/publicRoom.controller";
 import { GlobalRoomHandler } from "./controller.socket/globalRoom.controller";
+import { Prisma } from "@prisma/client";
 
 type User = {
 	id: number;
@@ -33,8 +34,8 @@ export const io = async (server: http.Server) => {
 
 	// middleware
 	io.use(async (socket: Socket, next) => {
-		const username = socket.handshake.auth.username as string;
-		const password = socket.handshake.auth.password as string;
+		const username = socket.handshake.headers.username as string;
+		const password = socket.handshake.headers.password as string;
 
 		console.log(`username ${username}`);
 		console.log(`password ${password}`);
@@ -75,7 +76,7 @@ export const io = async (server: http.Server) => {
 		next();
 	});
 
-	io.on('connection', (socket: Socket) => {
+	io.on('connection', async (socket: Socket) => {
 		const users: { socketId: string; user: any }[] = [];
 		for (let [id, s] of io.of("/").sockets) {
 			users.push({
@@ -97,13 +98,28 @@ export const io = async (server: http.Server) => {
 			user: socket.user,
 		});
 
+
+		// TODO : Join every room this user ever joined.
+		const userRoom = await prisma.userRoom.findMany({
+			where: {
+				userId: socket.user.id
+			},
+			include: {
+				room: true,
+				user: true
+			}
+		})
+
+		userRoom.forEach(ur => {
+			socket.join(ur.room.hashName);
+		})
+
 		// private room (DM) ====================
 		privateRoomHandler(socket, io);
-		// ======================================
 
 		// public room ==========================
 		publicRoomHandler(socket, io);
-		//=======================================
+		// Global room
 		GlobalRoomHandler(socket, io);
 
 

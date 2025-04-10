@@ -108,3 +108,45 @@ export const changeRoomTheme: RequestHandler = async (req, res) => {
         })
     }
 }
+
+
+export const getJoinedRoom: RequestHandler = async (req, res) => {
+    try {
+        console.log(req.body);
+        const { userId } = req.body;
+        if (!userId) {
+            res.status(404).json({
+                success: false,
+                message: "missing field"
+            })
+        }
+
+        const userRoom = await prisma.userRoom.findMany({
+            where: {
+                userId: parseInt(userId)
+            },
+            include: {
+                room: true,
+                user: true
+            }
+        })
+
+        let data: any = []
+        userRoom.forEach((ur) => {
+            data.push(ur.room)
+        });
+
+
+        res.status(200).json({
+            success: true,
+            message: "get joined room",
+            data: data
+        })
+    }
+    catch (error: any) {
+        res.status(500).json({
+            success: false,
+            messag: `internal server error : ${error.message}`
+        })
+    }
+}
