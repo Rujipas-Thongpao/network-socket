@@ -76,7 +76,7 @@ export const io = async (server: http.Server) => {
 	});
 
 	io.on('connection', (socket: Socket) => {
-		const users = [];
+		const users: { socketId: string; user: any }[] = [];
 		for (let [id, s] of io.of("/").sockets) {
 			users.push({
 				socketId: id,
@@ -86,12 +86,15 @@ export const io = async (server: http.Server) => {
 		console.log(users);
 
 		// Emit to the *newly connected* client ONLY
-		socket.emit("user connected", { users });
+		// socket.emit("user connected", { users });
+		setTimeout(() => {
+			socket.emit("user connected", { users });
+		}, 100); // Allow client to be ready
 
 		// Notify *others* that someone new joined
 		socket.broadcast.emit("new user joined", {
 			socketId: socket.id,
-			user: socket.data?.user,
+			user: socket.user,
 		});
 
 		// private room (DM) ====================
