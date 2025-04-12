@@ -75,7 +75,7 @@ export const getRoom: RequestHandler = async (req: Request, res: Response) => {
     }
 }
 
-export const getRooms: RequestHandler = async (req, res) => {
+export const getGroupRooms: RequestHandler = async (req, res) => {
     try {
         const rooms = await prisma.room.findMany({
             where: {
