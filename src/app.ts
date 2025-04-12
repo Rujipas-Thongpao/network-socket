@@ -6,8 +6,10 @@ import { io } from "./socket";
 
 import { prisma } from './prisma';
 import { chatRouter } from './Route/chat.route'
+import bodyParser from "body-parser";
 
 const app: Express = express();
+app.use(bodyParser.json());
 const port = process.env.PORT || 3001;
 
 app.get("/", (req: Request, res: Response) => {

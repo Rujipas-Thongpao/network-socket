@@ -29,6 +29,9 @@ export const createPublicRoomHandler: SocketEventHandler = async (socket, io, me
         }
     })
     socket.join(publicRoom.hashName);
+    socket.emit('join room', {
+        room: publicRoom
+    })
     await prisma.userRoom.upsert({
         where: {
             userId_roomId: {
@@ -60,6 +63,9 @@ export const joinPublicRoomHandler: SocketEventHandler = async (socket, io, mes)
     }
 
     socket.join(publicRoom.hashName);
+    socket.emit('join room', {
+        room: publicRoom
+    })
     console.log(socket.username, ' join public room ', publicRoom.hashName);
     io.to(publicRoom.hashName).emit("public : user connected", {
         user: socket.user
