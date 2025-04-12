@@ -31,7 +31,7 @@ model Room {
   name     String
   members  UserRoom[]
   messages Message[]
-  type     String     @default("public") // "public" or "private" 
+  type     String     @default("public") // "public" or "private" or "global"
   theme    Theme      @default(DEFAULT)
 
   createdAt DateTime @default(now())

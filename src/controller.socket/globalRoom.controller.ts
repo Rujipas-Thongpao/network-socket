@@ -3,12 +3,11 @@ import { hashRoomName } from './../Utils/Utils'
 import { SocketEventHandler, SocketHandler } from "../types/custom-types";
 
 export const GlobalRoomHandler: SocketHandler = async (socket, io) => {
-
     // create global room if there aren't one
     let globalRoom = await prisma.room.findFirst({
         where: {
             name: 'global room',
-            type: 'public'
+            type: 'global'
         }
     })
 

@@ -70,8 +70,30 @@ export const getRoom: RequestHandler = async (req: Request, res: Response) => {
     catch (error: any) {
         res.status(500).json({
             success: false,
-            messag: `internal server error : ${error.message}`
+            message: `internal server error : ${error.message}`
         })
+    }
+}
+
+export const getRooms: RequestHandler = async (req, res) => {
+    try {
+        const rooms = await prisma.room.findMany({
+            where: {
+                type: "public"
+            }
+        });
+        res.status(200).json({
+            success: true,
+            message: "all room",
+            data: rooms
+        })
+    }
+    catch (error: any) {
+        res.status(500).json({
+            success: false,
+            message: `internal server error : ${error.message}`
+        })
+
     }
 }
 
