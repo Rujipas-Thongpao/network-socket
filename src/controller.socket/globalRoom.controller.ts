@@ -7,7 +7,7 @@ export const GlobalRoomHandler: SocketHandler = async (socket, io) => {
     let globalRoom = await prisma.room.findFirst({
         where: {
             name: 'global room',
-            type: 'global'
+            type: 'public'
         }
     })
 
@@ -23,6 +23,19 @@ export const GlobalRoomHandler: SocketHandler = async (socket, io) => {
     }
     // join global room 
     socket.join(globalRoom.hashName);
+    await prisma.userRoom.upsert({
+        where: {
+            userId_roomId: {
+                userId: socket.user.id,
+                roomId: globalRoom.id
+            }
+        },
+        update: {}, // nothing to update if it exists
+        create: {
+            userId: socket.user.id,
+            roomId: globalRoom.id
+        }
+    });
 
     // Global
     socket.on("global message", async (mes) => {
