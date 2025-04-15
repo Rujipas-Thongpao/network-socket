@@ -117,11 +117,12 @@ export const changeRoomTheme: RequestHandler = async (req, res) => {
       });
     }
     res.status(200).json({
-      success: false,
+      success: true,
       message: "update theme unsuccessfully",
       data: updatedRoom,
     });
   } catch (error: any) {
+    console.log(error.message);
     res.status(500).json({
       success: false,
       messag: `internal server error : ${error.message}`,
