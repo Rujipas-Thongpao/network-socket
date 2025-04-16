@@ -25,7 +25,9 @@ declare module 'socket.io' {
 export const io = async (server: http.Server) => {
 	const io: Server = new Server(server, {
 		cors: {
-			origin: "http://localhost:3000", // Explicitly allow requests from port 3000
+			origin: (origin, callback) => {
+			  callback(null, origin); // Reflects the request origin
+			},
 			methods: ["GET", "POST"],
 			allowedHeaders: ["*"],
 			credentials: true
