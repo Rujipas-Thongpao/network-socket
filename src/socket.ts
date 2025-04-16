@@ -124,6 +124,20 @@ export const io = async (server: http.Server) => {
 		// Global room
 		GlobalRoomHandler(socket, io);
 
+		socket.on("change room theme", async (jsonString) => {
+			const { hashRoomName, theme } = JSON.parse(jsonString);
+			console.log(hashRoomName)
+			console.log(theme)
+			try {
+			  io.to(hashRoomName).emit("room theme updated", {
+				hashRoomName: hashRoomName,
+				theme: theme
+			  });
+			} catch (error) {
+			  console.error("Error updating room theme:", error);
+			}
+		  });
+
 
 		// disconnect controller
 		socket.on("disconnect", async () => {
