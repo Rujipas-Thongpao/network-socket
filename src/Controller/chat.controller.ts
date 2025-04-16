@@ -101,21 +101,29 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
       return;
     }
 
-    // 1. Get all public rooms (everyone should see these)
+    // 1. Get all public rooms
     const publicRooms = await prisma.room.findMany({
       where: { type: "public" },
       include: {
-        members: { include: { user: true } },
+        members: {
+          include: {
+            user: true, // keep full user object
+          },
+        },
       },
     });
 
-    // 2. Get only rooms this user has joined
+    // 2. Get rooms the user has joined
     const userJoinedRooms = await prisma.userRoom.findMany({
       where: { userId: user.id },
       include: {
         room: {
           include: {
-            members: { include: { user: true } },
+            members: {
+              include: {
+                user: true,
+              },
+            },
           },
         },
       },
@@ -123,7 +131,7 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
 
     const joinedRoomIds = new Set(userJoinedRooms.map((ur) => ur.room.id));
 
-    // 3. Map public rooms — mark if user is joined
+    // 3. Map public rooms with isUserJoined and full members
     const mappedPublicRooms = publicRooms.map((room) => ({
       id: room.id,
       name: room.name,
@@ -131,14 +139,11 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
       type: room.type,
       theme: room.theme,
       createdAt: room.createdAt,
-      members: room.members.map((m) => ({
-        id: m.user.id,
-        name: m.user.name,
-      })),
+      members: room.members, // full member object with user details
       isUserJoined: room.members.some((m) => m.userId === user.id),
     }));
 
-    // 4. Add joined private & global rooms only
+    // 4. Add private & global rooms user joined
     const joinedPrivateAndGlobal = userJoinedRooms
       .filter((ur) => ur.room.type === "private" || ur.room.type === "global")
       .map((ur) => {
@@ -150,15 +155,12 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
           type: room.type,
           theme: room.theme,
           createdAt: room.createdAt,
-          members: room.members.map((m) => ({
-            id: m.user.id,
-            name: m.user.name,
-          })),
+          members: room.members, // full member object with user details
           isUserJoined: true,
         };
       });
 
-    // 5. Merge and return
+    // 5. Merge and return all
     const allRooms = [...mappedPublicRooms, ...joinedPrivateAndGlobal];
 
     res.status(200).json({
@@ -172,7 +174,6 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
       success: false,
       message: `Internal server error: ${error.message}`,
     });
-    return;
   }
 };
 
