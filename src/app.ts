@@ -12,7 +12,9 @@ import bodyParser from "body-parser";
 const app: Express = express();
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      callback(null, origin); // Reflects the request origin
+    },
     credentials: true,
   })
 );
