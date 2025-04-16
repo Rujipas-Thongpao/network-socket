@@ -79,7 +79,21 @@ export const joinPrivateRoomHandler: SocketEventHandler = async (
     },
   });
 
-  // Send room info with members back to the user
+  await prisma.userRoom.upsert({
+    where: {
+      userId_roomId: {
+        userId: other.id,
+        roomId: privateRoom.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: other.id,
+      roomId: privateRoom.id,
+    },
+  });
+
+  // Send room info with members back to the current user
   const roomWithMembers = await prisma.room.findFirst({
     where: { id: privateRoom.id },
     include: {
@@ -93,7 +107,7 @@ export const joinPrivateRoomHandler: SocketEventHandler = async (
     room: roomWithMembers,
   });
 
-  // Notify other user
+  // Notify other user (only if they're connected)
   socket.to(privateRoom.hashName).emit("private : user connected", {
     user: socket.user,
   });
