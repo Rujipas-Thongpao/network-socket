@@ -6,7 +6,7 @@ export const GlobalRoomHandler: SocketHandler = async (socket, io) => {
     // create global room if there aren't one
     let globalRoom = await prisma.room.findFirst({
         where: {
-            name: 'global room',
+            name: 'Global',
             type: 'public'
         }
     })
@@ -15,8 +15,8 @@ export const GlobalRoomHandler: SocketHandler = async (socket, io) => {
     if (!globalRoom) {
         globalRoom = await prisma.room.create({
             data: {
-                hashName: hashRoomName('global room'),
-                name: 'global room',
+                hashName: hashRoomName('Global'),
+                name: 'Global',
                 type: 'public'
             }
         })
