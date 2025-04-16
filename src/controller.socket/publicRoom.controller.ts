@@ -29,6 +29,9 @@ export const createPublicRoomHandler: SocketEventHandler = async (socket, io, me
         }
     })
     socket.join(publicRoom.hashName);
+    io.emit("new room created", {
+        room: publicRoom
+    })
     socket.emit('join room', {
         room: publicRoom
     })
