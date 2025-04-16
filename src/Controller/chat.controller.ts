@@ -78,13 +78,19 @@ export const getRoom: RequestHandler = async (req: Request, res: Response) => {
 };
 
 export const getGroupRooms: RequestHandler = async (req, res) => {
-  const name = req.query.name as string;
-
   try {
-    // Find the user by username to get userId
+    const username = req.query.name as string;
+
+    if (!username) {
+      res.status(400).json({
+        success: false,
+        message: "Missing or invalid 'username' query parameter",
+      });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
-      where: { name },
-      select: { id: true },
+      where: { name: username },
     });
 
     if (!user) {
@@ -95,38 +101,80 @@ export const getGroupRooms: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Find all public rooms, and include whether the user is a member
-    const rooms = await prisma.room.findMany({
+    // 1. Get all public rooms (everyone should see these)
+    const publicRooms = await prisma.room.findMany({
       where: { type: "public" },
       include: {
-        members: {
-          where: { userId: user.id },
-          select: { userId: true }, // just to check membership
+        members: { include: { user: true } },
+      },
+    });
+
+    // 2. Get only rooms this user has joined
+    const userJoinedRooms = await prisma.userRoom.findMany({
+      where: { userId: user.id },
+      include: {
+        room: {
+          include: {
+            members: { include: { user: true } },
+          },
         },
       },
     });
 
-    // Map to include isUserJoined
-    const roomsWithStatus = rooms.map((room) => ({
-      ...room,
-      isUserJoined: room.members.length > 0,
+    const joinedRoomIds = new Set(userJoinedRooms.map((ur) => ur.room.id));
+
+    // 3. Map public rooms — mark if user is joined
+    const mappedPublicRooms = publicRooms.map((room) => ({
+      id: room.id,
+      name: room.name,
+      hashName: room.hashName,
+      type: room.type,
+      theme: room.theme,
+      createdAt: room.createdAt,
+      members: room.members.map((m) => ({
+        id: m.user.id,
+        name: m.user.name,
+      })),
+      isUserJoined: room.members.some((m) => m.userId === user.id),
     }));
+
+    // 4. Add joined private & global rooms only
+    const joinedPrivateAndGlobal = userJoinedRooms
+      .filter((ur) => ur.room.type === "private" || ur.room.type === "global")
+      .map((ur) => {
+        const room = ur.room;
+        return {
+          id: room.id,
+          name: room.name,
+          hashName: room.hashName,
+          type: room.type,
+          theme: room.theme,
+          createdAt: room.createdAt,
+          members: room.members.map((m) => ({
+            id: m.user.id,
+            name: m.user.name,
+          })),
+          isUserJoined: true,
+        };
+      });
+
+    // 5. Merge and return
+    const allRooms = [...mappedPublicRooms, ...joinedPrivateAndGlobal];
 
     res.status(200).json({
       success: true,
-      message: "All public rooms with join status",
-      data: roomsWithStatus,
+      message: "Get group rooms successfully",
+      data: allRooms,
     });
-
   } catch (error: any) {
+    console.error("getGroupRooms error:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
     });
+    return;
   }
 };
-
-
 
 export const changeRoomTheme: RequestHandler = async (req, res) => {
   try {
