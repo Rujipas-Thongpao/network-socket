@@ -78,25 +78,55 @@ export const getRoom: RequestHandler = async (req: Request, res: Response) => {
 };
 
 export const getGroupRooms: RequestHandler = async (req, res) => {
+  const name = req.query.name as string;
+
   try {
+    // Find the user by username to get userId
+    const user = await prisma.user.findUnique({
+      where: { name },
+      select: { id: true },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+      return;
+    }
+
+    // Find all public rooms, and include whether the user is a member
     const rooms = await prisma.room.findMany({
-      where: {
-        type: "public",
+      where: { type: "public" },
+      include: {
+        members: {
+          where: { userId: user.id },
+          select: { userId: true }, // just to check membership
+        },
       },
     });
-    console.log("rooms", rooms);
+
+    // Map to include isUserJoined
+    const roomsWithStatus = rooms.map((room) => ({
+      ...room,
+      isUserJoined: room.members.length > 0,
+    }));
+
     res.status(200).json({
       success: true,
-      message: "all room",
-      data: rooms,
+      message: "All public rooms with join status",
+      data: roomsWithStatus,
     });
+
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      message: `internal server error : ${error.message}`,
+      message: `Internal server error: ${error.message}`,
     });
   }
 };
+
+
 
 export const changeRoomTheme: RequestHandler = async (req, res) => {
   try {
